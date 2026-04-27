@@ -1,0 +1,29 @@
+# Binaries
+lbd
+lbd.exe
+*.exe
+*.out
+dist/
+
+# Test & coverage
+*.test
+*.coverprofile
+coverage.out
+
+# Go build cache
+/vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# lbd own output (avoid committing generated artifacts from dogfooding)
+Dockerfile.lbd
+.dockerignore.lbd
+.lbd-report.md
