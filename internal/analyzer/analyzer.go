@@ -1,8 +1,8 @@
 package analyzer
 
 import (
-	scanner "github.com/VictorM0nteiro/leanBuildDocker/internal/scanner"
-	types "github.com/VictorM0nteiro/leanBuildDocker/internal/types"
+	"github.com/VictorM0nteiro/leanBuildDocker/internal/scanner"
+	"github.com/VictorM0nteiro/leanBuildDocker/internal/types"
 )
 
 // Analyzer is the interface every language-specific analyzer implements.
@@ -10,5 +10,5 @@ import (
 // the real Go analyzer in the golang/ subpackage.
 type Analyzer interface {
 	Language() string
-	Analyze(inv *scanner.FileInvetory) (*types.ProjectInfo, error)
+	Analyze(inv *scanner.FileInventory) (*types.ProjectInfo, error)
 }

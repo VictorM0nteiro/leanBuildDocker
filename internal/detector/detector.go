@@ -12,7 +12,7 @@ type Result struct {
 
 // Detect identifies the project's primary language from a FileInventory.
 // Phase 1 stub: always returns Go with full confidence.
-func Detect(inv *scanner.FileInvetory) (*Result, error) {
+func Detect(inv *scanner.FileInventory) (*Result, error) {
 	return &Result{
 		Language: "go",
 		Confidence: 1.0,
