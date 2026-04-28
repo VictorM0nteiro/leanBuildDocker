@@ -1,6 +1,6 @@
 # Binaries
-lbd
-lbd.exe
+/lbd
+/lbd.exe
 *.exe
 *.out
 dist/
@@ -27,3 +27,6 @@ Thumbs.db
 Dockerfile.lbd
 .dockerignore.lbd
 .lbd-report.md
+
+#Docker
+Dockerfile
