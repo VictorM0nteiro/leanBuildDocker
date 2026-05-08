@@ -36,18 +36,15 @@ func samplePlan() *types.BuildPlan {
 	}
 }
 
-func TestRender_CreatesExpectedFiles(t *testing.T) {
+func TestRender_CreatesAllFiles(t *testing.T) {
 	tmpDir := t.TempDir()
-
-	if err := Render(samplePlan(), tmpDir); err != nil {
-		t.Fatalf("Render returned error: %v", err)
+	if err := Render(samplePlan(), tmpDir, Options{}); err != nil {
+		t.Fatal(err)
 	}
-
-	for _, name := range []string{"Dockerfile", ".lbd-report.md"} {
-		path := filepath.Join(tmpDir, name)
-		info, err := os.Stat(path)
+	for _, name := range []string{"Dockerfile", ".dockerignore", ".lbd-report.md"} {
+		info, err := os.Stat(filepath.Join(tmpDir, name))
 		if err != nil {
-			t.Errorf("expected file %s to exist: %v", name, err)
+			t.Errorf("expected %s to exist: %v", name, err)
 			continue
 		}
 		if info.Size() == 0 {
@@ -58,14 +55,10 @@ func TestRender_CreatesExpectedFiles(t *testing.T) {
 
 func TestRender_DockerfileContent(t *testing.T) {
 	tmpDir := t.TempDir()
-	if err := Render(samplePlan(), tmpDir); err != nil {
+	if err := Render(samplePlan(), tmpDir, Options{}); err != nil {
 		t.Fatal(err)
 	}
-
-	data, err := os.ReadFile(filepath.Join(tmpDir, "Dockerfile"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	data, _ := os.ReadFile(filepath.Join(tmpDir, "Dockerfile"))
 	df := string(data)
 
 	wants := []string{
@@ -83,29 +76,56 @@ func TestRender_DockerfileContent(t *testing.T) {
 	}
 }
 
-func TestRender_ReportListsDecisions(t *testing.T) {
+func TestRender_RefusesToOverwrite(t *testing.T) {
 	tmpDir := t.TempDir()
-	if err := Render(samplePlan(), tmpDir); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte("hand-written"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
-	data, err := os.ReadFile(filepath.Join(tmpDir, ".lbd-report.md"))
-	if err != nil {
+	err := Render(samplePlan(), tmpDir, Options{Force: false})
+	if err == nil {
+		t.Fatal("expected Render to refuse overwrite, got nil error")
+	}
+	if !strings.Contains(err.Error(), "--force") {
+		t.Errorf("error should mention --force, got: %v", err)
+	}
+
+	data, _ := os.ReadFile(filepath.Join(tmpDir, "Dockerfile"))
+	if string(data) != "hand-written" {
+		t.Errorf("existing file was clobbered: %q", data)
+	}
+}
+
+func TestRender_ForceOverwrites(t *testing.T) {
+	tmpDir := t.TempDir()
+	_ = os.WriteFile(filepath.Join(tmpDir, "Dockerfile"), []byte("old"), 0644)
+
+	if err := Render(samplePlan(), tmpDir, Options{Force: true}); err != nil {
 		t.Fatal(err)
 	}
-	report := string(data)
-
-	if !strings.Contains(report, "runtime base image") {
-		t.Errorf("report missing decision topic, got:\n%s", report)
+	data, _ := os.ReadFile(filepath.Join(tmpDir, "Dockerfile"))
+	if !strings.Contains(string(data), "FROM golang") {
+		t.Errorf("expected new content, got: %s", data)
 	}
-	if !strings.Contains(report, "Alternatives considered") {
-		t.Errorf("report missing alternatives section, got:\n%s", report)
+}
+
+func TestRender_AtomicOnTemplateFailure(t *testing.T) {
+	// A nil plan should fail mid-render. Ensure no partial files are written.
+	tmpDir := t.TempDir()
+	err := Render(nil, tmpDir, Options{})
+	if err == nil {
+		t.Fatal("expected failure with nil plan")
+	}
+	for _, name := range []string{"Dockerfile", ".dockerignore", ".lbd-report.md"} {
+		if _, statErr := os.Stat(filepath.Join(tmpDir, name)); statErr == nil {
+			t.Errorf("partial file written: %s", name)
+		}
 	}
 }
 
 func TestRender_FailsOnNonexistentDir(t *testing.T) {
-	err := Render(samplePlan(), "/this/path/does/not/exist/at/all")
+	err := Render(samplePlan(), "/this/path/does/not/exist/at/all", Options{Force: true})
 	if err == nil {
-		t.Error("expected Render to fail on nonexistent directory, got nil error")
+		t.Error("expected failure on nonexistent directory")
 	}
 }

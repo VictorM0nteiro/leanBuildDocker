@@ -20,6 +20,7 @@ var version = "0.0.0-dev"
 type rootFlags struct {
 	target  string
 	verbose bool
+	force   bool
 }
 
 func newRootCmd() *cobra.Command {
@@ -38,6 +39,8 @@ func newRootCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&flags.target, "target", "t", "", "path to the project (default: current directory)")
 	cmd.Flags().BoolVarP(&flags.verbose, "verbose", "v", false, "enable verbose output")
+	cmd.Flags().BoolVarP(&flags.force, "force", "f", false, "overwrite existing Dockerfile, .dockerignore, and .lbd-report.md")
+
 
 	cmd.AddCommand(newDoctorCmd())
 	cmd.AddCommand(newAnalyzeCmd())
@@ -92,10 +95,11 @@ func runPipeline(flags *rootFlags) error {
 	if err != nil {
 		return fmt.Errorf("planning build: %w", err)
 	}
-	slog.Debug("planner finished", "build_image", plan.BuildBaseImage, "runtime_image", plan.RuntimeBaseImage)
+	slog.Debug("planner finished", "build_image", plan.BuildStage.BaseImage, "runtime_image", plan.RuntimeStage.BaseImage)
 
-	if err := renderer.Render(plan, projectPath); err != nil {
-		return fmt.Errorf("rendering output: %w", err)
+
+	if err := renderer.Render(plan, projectPath, renderer.Options{Force: flags.force}); err != nil {
+    return fmt.Errorf("rendering output: %w", err)
 	}
 	slog.Info("output written", "files", []string{"Dockerfile", ".lbd-report.md"})
 
