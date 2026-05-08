@@ -36,6 +36,7 @@ func Plan(info *types.ProjectInfo) (*types.BuildPlan, error) {
 
 	chooseImages(info, plan)
 	chooseBuildCommand(info, plan)
+	resolveSystemPackages(info, plan)
 	chooseRuntimeConfig(plan)
 
 	return plan, nil
@@ -139,3 +140,35 @@ func chooseRuntimeConfig(plan *types.BuildPlan) {
 		},
 	)
 }
+
+func resolveSystemPackages(info *types.ProjectInfo, plan *types.BuildPlan) {
+	if len(info.SystemPackageHints) == 0 {
+		return
+	}
+
+	isAlpineBuild := strings.Contains(plan.BuildStage.BaseImage, "alpine")
+	if isAlpineBuild {
+		plan.BuildStage.PackageManager = "apk"
+	} else {
+		plan.BuildStage.PackageManager = "apt"
+	}
+
+	var buildPkgs []string
+	for _, hint := range info.SystemPackageHints {
+		if isAlpineBuild {
+			buildPkgs = append(buildPkgs, hint.Build.Alpine...)
+		} else {
+			buildPkgs = append(buildPkgs, hint.Build.Debian...)
+		}
+	}
+	plan.BuildStage.SystemPackages = buildPkgs
+
+	if len(buildPkgs) > 0 {
+		plan.Decisions = append(plan.Decisions, types.Decision{
+			Topic:   "build-time system packages",
+			Chose:   strings.Join(buildPkgs, ", "),
+			Because: "required by Go dependencies that link against C libraries (sourced from leanBuildDocker knowledge base)",
+		})
+	}
+}
+

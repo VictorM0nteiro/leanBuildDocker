@@ -7,33 +7,39 @@ type BuildPlan struct {
 	BuildStage   BuildStage
 	RuntimeStage RuntimeStage
 
-	BinaryName string // e.g. "api"
-	BinaryPath string // path inside runtime image, e.g. "/api"
+	BinaryName string
+	BinaryPath string
 
 	UseMultiStage bool
 
 	Decisions []Decision
 }
 
-// BuildStage carries the configuration of the first (compile) stage.
 type BuildStage struct {
 	BaseImage      string
-	SystemPackages []string // build-time apk/apt packages
-	BuildCommand   []string // exec form: ["go", "build", "-o", "/out/api", "./cmd/api"]
-	CopyVendor     bool     // when vendoring is used, copy vendor/ into /src
+	SystemPackages []string
+	PackageManager string // "apk" | "apt" — empty when no packages
+	BuildCommand   []string
+	CopyVendor     bool
 }
 
-// RuntimeStage carries the configuration of the final image.
 type RuntimeStage struct {
 	BaseImage      string
-	SystemPackages []string // runtime-only packages (e.g., ca-certificates)
-	EntryCommand   []string // exec form: ["/api"]
-	User           string   // "nonroot" or "65532:65532"
+	SystemPackages []string
+	PackageManager string
+	EntryCommand   []string
+	User           string
 	WorkingDir     string
 	ExposedPorts   []int
 }
 
-// Decision is a non-trivial choice the Planner made, recorded for the report.
+// PackageSet groups system package names by distribution. The Planner
+// chooses one slice based on the build/runtime base image.
+type PackageSet struct {
+	Alpine []string `yaml:"alpine"`
+	Debian []string `yaml:"debian"`
+}
+
 type Decision struct {
 	Topic        string
 	Chose        string

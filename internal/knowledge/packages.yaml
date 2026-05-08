@@ -1,0 +1,16 @@
+# Knowledge base for system package requirements.
+# Maps Go dependency paths to system packages the resulting binary needs
+# at build time (compiled against) and runtime (loaded dynamically).
+#
+# Package names differ between Alpine (apk) and Debian (apt), so each
+# entry carries both lists. The Planner picks the right one based on
+# the chosen base image.
+packages:
+  - go_path: github.com/mattn/go-sqlite3
+    requires_cgo: true
+    build:
+      alpine: [sqlite-dev]
+      debian: [libsqlite3-dev]
+    runtime:
+      alpine: []
+      debian: []

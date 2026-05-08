@@ -2,6 +2,15 @@
 # Do not edit manually — re-run lbd to regenerate.
 
 FROM {{ .BuildStage.BaseImage }} AS builder
+{{- if .BuildStage.SystemPackages }}
+{{- if eq .BuildStage.PackageManager "apk" }}
+RUN apk add --no-cache {{ join .BuildStage.SystemPackages " " }}
+{{- else }}
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends {{ join .BuildStage.SystemPackages " " }} \
+    && rm -rf /var/lib/apt/lists/*
+{{- end }}
+{{- end }}
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

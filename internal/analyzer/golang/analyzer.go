@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/mod/modfile"
 
+	"github.com/VictorM0nteiro/leanBuildDocker/internal/knowledge"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/scanner"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/types"
 )
@@ -46,6 +47,20 @@ func (g *GoAnalyzer) Analyze(inv *scanner.FileInventory) (*types.ProjectInfo, er
 		return nil, err
 	}
 	info.HasCGO = hasCGO
+
+	kb, err := knowledge.Load()
+	if err != nil {
+		return nil, fmt.Errorf("loading knowledge base: %w", err)
+	}
+	for _, dep := range info.DirectDependencies {
+		if entry, ok := kb.Lookup(dep.Path); ok {
+			info.SystemPackageHints = append(info.SystemPackageHints, types.SystemPackageHint{
+				DepPath: entry.GoPath,
+				Build:   entry.Build,
+				Runtime: entry.Runtime,
+			})
+		}
+	}
 
 	return info, nil
 }

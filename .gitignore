@@ -28,5 +28,6 @@ Dockerfile.lbd
 .dockerignore.lbd
 .lbd-report.md
 
-#Docker
+# Docker (lbd-generated artifacts in fixtures and project root)
 Dockerfile
+.dockerignore

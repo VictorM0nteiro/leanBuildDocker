@@ -71,8 +71,9 @@ func Render(plan *types.BuildPlan, outputDir string, opts Options) error {
 
 func renderOne(path string, plan *types.BuildPlan) (string, error) {
 	funcs := template.FuncMap{
-		"execForm": execForm,
-	}
+    "execForm": execForm,
+    "join":     strings.Join,
+}
 
 	tmpl, err := template.New(filepath.Base(path)).Funcs(funcs).ParseFS(templatesFS, path)
 	if err != nil {

@@ -102,3 +102,34 @@ func TestPlan_MonorepoFails(t *testing.T) {
 		t.Errorf("error must suggest --target, got: %s", err.Error())
 	}
 }
+
+func TestPlan_CGOWithSqliteAddsLibsqlite3(t *testing.T) {
+	info := &types.ProjectInfo{
+		LanguageVersion: "1.23",
+		EntryPoint:      ".",
+		MainPackages:    []string{"."},
+		HasCGO:          true,
+		SystemPackageHints: []types.SystemPackageHint{
+			{
+				DepPath: "github.com/mattn/go-sqlite3",
+				Build:   types.PackageSet{Alpine: []string{"sqlite-dev"}, Debian: []string{"libsqlite3-dev"}},
+			},
+		},
+	}
+	plan, err := planner.Plan(info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.BuildStage.PackageManager != "apt" {
+		t.Errorf("CGO build is on Debian; expected apt, got %q", plan.BuildStage.PackageManager)
+	}
+	found := false
+	for _, p := range plan.BuildStage.SystemPackages {
+		if p == "libsqlite3-dev" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected libsqlite3-dev in build packages, got %v", plan.BuildStage.SystemPackages)
+	}
+}

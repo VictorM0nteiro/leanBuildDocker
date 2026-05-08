@@ -7,12 +7,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/VictorM0nteiro/leanBuildDocker/internal/analyzer"
+	// "github.com/VictorM0nteiro/leanBuildDocker/internal/analyzer"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/detector"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/logging"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/planner"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/renderer"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/scanner"
+	"github.com/VictorM0nteiro/leanBuildDocker/internal/analyzer/golang"
+
 )
 
 var version = "0.0.0-dev"
@@ -84,7 +86,7 @@ func runPipeline(flags *rootFlags) error {
 	}
 	slog.Info("language detected", "language", det.Language, "confidence", det.Confidence)
 
-	a := analyzer.NewDummy()
+	a := golang.New()
 	info, err := a.Analyze(inv)
 	if err != nil {
 		return fmt.Errorf("analyzing project: %w", err)
