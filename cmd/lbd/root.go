@@ -7,19 +7,24 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/VictorM0nteiro/leanBuildDocker/internal/analyzer"
+	// "github.com/VictorM0nteiro/leanBuildDocker/internal/analyzer"
+	"github.com/VictorM0nteiro/leanBuildDocker/internal/analyzer/golang"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/detector"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/logging"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/planner"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/renderer"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/scanner"
+	"github.com/VictorM0nteiro/leanBuildDocker/internal/validator"
 )
 
 var version = "0.0.0-dev"
 
 type rootFlags struct {
-	target  string
-	verbose bool
+	target   string
+	verbose  bool
+	force    bool
+	validate bool
+	keep     bool
 }
 
 func newRootCmd() *cobra.Command {
@@ -38,6 +43,9 @@ func newRootCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&flags.target, "target", "t", "", "path to the project (default: current directory)")
 	cmd.Flags().BoolVarP(&flags.verbose, "verbose", "v", false, "enable verbose output")
+	cmd.Flags().BoolVarP(&flags.force, "force", "f", false, "overwrite existing Dockerfile, .dockerignore, and .lbd-report.md")
+	cmd.Flags().BoolVar(&flags.validate, "validate", false, "after generating, build the image and run a smoke test")
+	cmd.Flags().BoolVar(&flags.keep, "keep", false, "keep the validation image instead of removing it")
 
 	cmd.AddCommand(newDoctorCmd())
 	cmd.AddCommand(newAnalyzeCmd())
@@ -81,23 +89,34 @@ func runPipeline(flags *rootFlags) error {
 	}
 	slog.Info("language detected", "language", det.Language, "confidence", det.Confidence)
 
-	a := analyzer.NewDummy()
+	a := golang.New()
 	info, err := a.Analyze(inv)
 	if err != nil {
 		return fmt.Errorf("analyzing project: %w", err)
 	}
-	slog.Debug("analyzer finished", "dependencies", len(info.Dependencies), "cgo", info.HasCGO)
+	slog.Debug("analyzer finished", "dependencies", len(info.DirectDependencies), "cgo", info.HasCGO)
 
 	plan, err := planner.Plan(info)
 	if err != nil {
 		return fmt.Errorf("planning build: %w", err)
 	}
-	slog.Debug("planner finished", "build_image", plan.BuildBaseImage, "runtime_image", plan.RuntimeBaseImage)
+	slog.Debug("planner finished", "build_image", plan.BuildStage.BaseImage, "runtime_image", plan.RuntimeStage.BaseImage)
 
-	if err := renderer.Render(plan, projectPath); err != nil {
+	if err := renderer.Render(plan, projectPath, renderer.Options{Force: flags.force}); err != nil {
 		return fmt.Errorf("rendering output: %w", err)
 	}
 	slog.Info("output written", "files", []string{"Dockerfile", ".lbd-report.md"})
+
+	if flags.validate {
+		res := validator.Validate(validator.Options{
+			ProjectDir: projectPath,
+			Keep:       flags.keep,
+		})
+		printValidationReport(os.Stdout, res)
+		if !res.Build.OK || (res.Build.OK && !res.Smoke.OK) {
+			return fmt.Errorf("validation failed")
+		}
+	}
 
 	return nil
 }

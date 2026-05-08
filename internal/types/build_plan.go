@@ -1,25 +1,48 @@
 package types
 
 // BuildPlan represents the decisions a Planner made about how to build
-// a project, based on a ProjectInfo.
+// a project, based on a ProjectInfo. The Decisions slice is the direct
+// source of truth for .lbd-report.md.
 type BuildPlan struct {
-	BuildBaseImage string
-	
-	RuntimeBaseImage string
+	BuildStage   BuildStage
+	RuntimeStage RuntimeStage
 
-	// BuildCommand is the command that compiles the project, in Docker's
-	// exec form (a slice of arguments, not a single shell string).
-	// Exec form avoids spawning a shell and gives proper signal handling.
-	// Example: ["go", "build", "-o", "/out/api", "./cmd/api"]
-	BuildCommand []string
+	BinaryName string
+	BinaryPath string
 
-	RunCommand []string
-
-	ExposedPort int
-
-	// UseMultiStage controls whether the Dockerfile is rendered with
-	// separate build and runtime stages. In practice this should always
-	// be true for Go (multi-stage is what makes images small), but the
-	// flag exists so the Renderer can branch cleanly without inferring it.
 	UseMultiStage bool
+
+	Decisions []Decision
+}
+
+type BuildStage struct {
+	BaseImage      string
+	SystemPackages []string
+	PackageManager string // "apk" | "apt" — empty when no packages
+	BuildCommand   []string
+	CopyVendor     bool
+}
+
+type RuntimeStage struct {
+	BaseImage      string
+	SystemPackages []string
+	PackageManager string
+	EntryCommand   []string
+	User           string
+	WorkingDir     string
+	ExposedPorts   []int
+}
+
+// PackageSet groups system package names by distribution. The Planner
+// chooses one slice based on the build/runtime base image.
+type PackageSet struct {
+	Alpine []string `yaml:"alpine"`
+	Debian []string `yaml:"debian"`
+}
+
+type Decision struct {
+	Topic        string
+	Chose        string
+	Because      string
+	Alternatives []string
 }

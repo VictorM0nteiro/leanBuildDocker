@@ -1,4 +1,3 @@
-// internal/analyzer/dummy.go
 package analyzer
 
 import (
@@ -6,13 +5,9 @@ import (
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/types"
 )
 
-// dummyAnalyzer is a Phase 1 placeholder. Will be deleted in Phase 2
-// once the real Go analyzer (in subpackage golang/) is implemented.
 type dummyAnalyzer struct{}
 
-func NewDummy() Analyzer {
-	return &dummyAnalyzer{}
-}
+func NewDummy() Analyzer { return &dummyAnalyzer{} }
 
 func (d *dummyAnalyzer) Language() string { return "go" }
 
@@ -20,8 +15,12 @@ func (d *dummyAnalyzer) Analyze(inv *scanner.FileInventory) (*types.ProjectInfo,
 	return &types.ProjectInfo{
 		Language:        "go",
 		LanguageVersion: "1.23",
-		Dependencies:    []string{"github.com/gin-gonic/gin"},
-		EntryPoint:      "./cmd/api",
-		HasCGO:          false,
+		ModulePath:      "example.com/dummy",
+		ProjectRoot:     inv.ProjectRoot,
+		DirectDependencies: []types.GoDep{
+			{Path: "github.com/gin-gonic/gin", Version: "v1.9.1"},
+		},
+		EntryPoint: "./cmd/api",
+		HasCGO:     false,
 	}, nil
 }
