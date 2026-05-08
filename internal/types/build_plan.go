@@ -1,25 +1,42 @@
 package types
 
 // BuildPlan represents the decisions a Planner made about how to build
-// a project, based on a ProjectInfo.
+// a project, based on a ProjectInfo. The Decisions slice is the direct
+// source of truth for .lbd-report.md.
 type BuildPlan struct {
-	BuildBaseImage string
-	
-	RuntimeBaseImage string
+	BuildStage   BuildStage
+	RuntimeStage RuntimeStage
 
-	// BuildCommand is the command that compiles the project, in Docker's
-	// exec form (a slice of arguments, not a single shell string).
-	// Exec form avoids spawning a shell and gives proper signal handling.
-	// Example: ["go", "build", "-o", "/out/api", "./cmd/api"]
-	BuildCommand []string
+	BinaryName string // e.g. "api"
+	BinaryPath string // path inside runtime image, e.g. "/api"
 
-	RunCommand []string
-
-	ExposedPort int
-
-	// UseMultiStage controls whether the Dockerfile is rendered with
-	// separate build and runtime stages. In practice this should always
-	// be true for Go (multi-stage is what makes images small), but the
-	// flag exists so the Renderer can branch cleanly without inferring it.
 	UseMultiStage bool
+
+	Decisions []Decision
+}
+
+// BuildStage carries the configuration of the first (compile) stage.
+type BuildStage struct {
+	BaseImage      string
+	SystemPackages []string // build-time apk/apt packages
+	BuildCommand   []string // exec form: ["go", "build", "-o", "/out/api", "./cmd/api"]
+	CopyVendor     bool     // when vendoring is used, copy vendor/ into /src
+}
+
+// RuntimeStage carries the configuration of the final image.
+type RuntimeStage struct {
+	BaseImage      string
+	SystemPackages []string // runtime-only packages (e.g., ca-certificates)
+	EntryCommand   []string // exec form: ["/api"]
+	User           string   // "nonroot" or "65532:65532"
+	WorkingDir     string
+	ExposedPorts   []int
+}
+
+// Decision is a non-trivial choice the Planner made, recorded for the report.
+type Decision struct {
+	Topic        string
+	Chose        string
+	Because      string
+	Alternatives []string
 }
