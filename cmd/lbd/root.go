@@ -86,7 +86,7 @@ func runPipeline(flags *rootFlags) error {
 	if err != nil {
 		return fmt.Errorf("analyzing project: %w", err)
 	}
-	slog.Debug("analyzer finished", "dependencies", len(info.Dependencies), "cgo", info.HasCGO)
+	slog.Debug("analyzer finished", "dependencies", len(info.DirectDependencies), "cgo", info.HasCGO)
 
 	plan, err := planner.Plan(info)
 	if err != nil {

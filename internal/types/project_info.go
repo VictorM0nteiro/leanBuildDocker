@@ -4,10 +4,29 @@ package types
 type ProjectInfo struct {
 	Language        string
 	LanguageVersion string
-	Dependencies    []string
-	EntryPoint      string
-	// HasCGO indicates whether the project uses cgo. This single boolean
-	// drives major Planner decisions: with cgo, the runtime image cannot
-	// be "scratch" or distroless/static; it needs glibc or musl available.
-	HasCGO          bool
+	ModulePath      string
+	ProjectRoot     string
+
+	DirectDependencies []GoDep
+
+	HasCGO        bool
+	BuildTags     []string
+	UsesVendoring bool
+
+	MainPackages []string
+	EntryPoint   string
+
+	Warnings []Warning
+}
+
+// GoDep is a dependency entry from go.mod.
+type GoDep struct {
+	Path     string
+	Version  string
+	Indirect bool
+}
+
+// Warning is a non-fatal issue discovered during analysis.
+type Warning struct {
+	Message string
 }
