@@ -79,6 +79,6 @@ Adding any dependency beyond this list requires a one-paragraph justification. T
 
 ## Development phases (current state)
 
-See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the full roadmap. Check [Readme.md](Readme.md) for the problem statement and MVP definition.
+See [DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md) for the full roadmap. Check [docs/MVP.md](docs/MVP.md) for the problem statement and MVP definition.
 
 Phase order: 0 (foundations) → 1 (dummy pipeline) → 2 (real Go analyzer) → 3 (planner) → 4 (renderer/templates) → 5 (KB) → 6 (--validate) → 7 (lbd doctor) → 8 (release).
