@@ -16,13 +16,9 @@ func newDoctorCmd() *cobra.Command {
 		Use:   "doctor",
 		Short: "Diagnose potential issues with a project and its Dockerfile",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			target := dir
-			if target == "" {
-				wd, err := os.Getwd()
-				if err != nil {
-					return fmt.Errorf("getting working directory: %w", err)
-				}
-				target = wd
+			target, err := resolveProjectPath(dir)
+			if err != nil {
+				return err
 			}
 
 			rep, err := doctor.Diagnose(target)

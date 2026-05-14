@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -15,6 +16,34 @@ import (
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/scanner"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/validator"
 )
+
+// resolveProjectPath returns the project directory to operate on.
+// If target is explicit, it's used as-is. Otherwise we walk up from
+// the current working directory looking for go.mod so the user can
+// run `lbd` from any subdirectory of the project.
+func resolveProjectPath(target string) (string, error) {
+	if target != "" {
+		return filepath.Abs(target)
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("getting working directory: %w", err)
+	}
+	dir := wd
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			if dir != wd {
+				slog.Info("found go.mod above cwd", "root", dir)
+			}
+			return dir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return wd, nil
+		}
+		dir = parent
+	}
+}
 
 var version = "0.0.0-dev"
 
@@ -52,13 +81,9 @@ func newRootCmd() *cobra.Command {
 }
 
 func runPipeline(flags *rootFlags) error {
-	projectPath := flags.target
-	if projectPath == "" {
-		wd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("getting working directory: %w", err)
-		}
-		projectPath = wd
+	projectPath, err := resolveProjectPath(flags.target)
+	if err != nil {
+		return err
 	}
 
 	stat, err := os.Stat(projectPath)
