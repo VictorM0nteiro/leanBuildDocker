@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	// "github.com/VictorM0nteiro/leanBuildDocker/internal/analyzer"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/analyzer/golang"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/detector"
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/logging"
@@ -48,8 +47,6 @@ func newRootCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.keep, "keep", false, "keep the validation image instead of removing it")
 
 	cmd.AddCommand(newDoctorCmd())
-	cmd.AddCommand(newAnalyzeCmd())
-	cmd.AddCommand(newExplainCmd())
 
 	return cmd
 }
