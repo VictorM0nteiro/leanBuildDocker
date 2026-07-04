@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -16,7 +17,13 @@ func newDoctorCmd() *cobra.Command {
 		Use:   "doctor",
 		Short: "Diagnose potential issues with a project and its Dockerfile",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			target, err := resolveProjectPath(dir)
+			target := dir
+			var err error
+			if target == "" {
+				target, err = resolveProjectRoot()
+			} else {
+				target, err = filepath.Abs(target)
+			}
 			if err != nil {
 				return err
 			}

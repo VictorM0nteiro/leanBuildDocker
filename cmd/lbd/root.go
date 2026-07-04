@@ -17,14 +17,11 @@ import (
 	"github.com/VictorM0nteiro/leanBuildDocker/internal/validator"
 )
 
-// resolveProjectPath returns the project directory to operate on.
-// If target is explicit, it's used as-is. Otherwise we walk up from
-// the current working directory looking for go.mod so the user can
-// run `lbd` from any subdirectory of the project.
-func resolveProjectPath(target string) (string, error) {
-	if target != "" {
-		return filepath.Abs(target)
-	}
+// resolveProjectRoot finds the module root by walking up from the current
+// working directory looking for go.mod, so `lbd` works from any subdirectory.
+// The --target flag selects a service *within* this root; it does not change
+// where the root is (that was a bug — a monorepo's cmd/api has no go.mod).
+func resolveProjectRoot() (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("getting working directory: %w", err)
@@ -43,6 +40,21 @@ func resolveProjectPath(target string) (string, error) {
 		}
 		dir = parent
 	}
+}
+
+// relTarget converts a --target path (possibly relative to the cwd or
+// absolute) into a package path relative to the module root, which is the
+// form the analyzer expects for entry-point selection.
+func relTarget(root, target string) (string, error) {
+	abs, err := filepath.Abs(target)
+	if err != nil {
+		return "", fmt.Errorf("resolving --target %q: %w", target, err)
+	}
+	rel, err := filepath.Rel(root, abs)
+	if err != nil {
+		return "", fmt.Errorf("--target %q is outside the project root %q", target, root)
+	}
+	return filepath.ToSlash(rel), nil
 }
 
 var version = "0.0.0-dev"
@@ -81,7 +93,7 @@ func newRootCmd() *cobra.Command {
 }
 
 func runPipeline(flags *rootFlags) error {
-	projectPath, err := resolveProjectPath(flags.target)
+	projectPath, err := resolveProjectRoot()
 	if err != nil {
 		return err
 	}
@@ -109,14 +121,34 @@ func runPipeline(flags *rootFlags) error {
 	if err != nil {
 		return fmt.Errorf("detecting language: %w", err)
 	}
-	slog.Info("language detected", "language", det.Language, "confidence", det.Confidence)
+	slog.Info("language detected", "language", det.Language, "confidence", det.Confidence, "evidence", det.Evidence)
 
-	a := golang.New()
-	info, err := a.Analyze(inv)
+	var opts []golang.Option
+	if flags.target != "" {
+		rel, err := relTarget(projectPath, flags.target)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, golang.WithTarget(rel))
+	}
+
+	info, err := golang.New(opts...).Analyze(inv)
 	if err != nil {
 		return fmt.Errorf("analyzing project: %w", err)
 	}
-	slog.Debug("analyzer finished", "dependencies", len(info.DirectDependencies), "cgo", info.HasCGO)
+	slog.Debug("analyzer finished",
+		"dependencies", len(info.DirectDependencies),
+		"cgo", info.HasCGO,
+		"entry", info.EntryPoint,
+		"framework", info.Framework,
+		"ports", info.ExposedPorts,
+		"runtime_assets", len(info.RuntimeAssets),
+		"needs_ca_certs", info.NeedsCACerts,
+		"needs_tzdata", info.NeedsTZData,
+	)
+	for _, w := range info.Warnings {
+		slog.Warn("analysis warning", "message", w.Message)
+	}
 
 	plan, err := planner.Plan(info)
 	if err != nil {

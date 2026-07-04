@@ -71,9 +71,10 @@ func Render(plan *types.BuildPlan, outputDir string, opts Options) error {
 
 func renderOne(path string, plan *types.BuildPlan) (string, error) {
 	funcs := template.FuncMap{
-    "execForm": execForm,
-    "join":     strings.Join,
-}
+		"execForm":  execForm,
+		"shellJoin": shellJoin,
+		"join":      strings.Join,
+	}
 
 	tmpl, err := template.New(filepath.Base(path)).Funcs(funcs).ParseFS(templatesFS, path)
 	if err != nil {
@@ -93,6 +94,22 @@ func execForm(args []string) string {
 		quoted[i] = fmt.Sprintf("%q", a)
 	}
 	return "[" + strings.Join(quoted, ", ") + "]"
+}
+
+// shellJoin renders a command as a Dockerfile RUN in shell form. Arguments
+// containing whitespace (notably the combined -ldflags value) are wrapped in
+// double quotes so the shell treats them as one token — double, not single,
+// so build-time variables like $VERSION still expand.
+func shellJoin(args []string) string {
+	parts := make([]string, len(args))
+	for i, a := range args {
+		if a == "" || strings.ContainsAny(a, " \t") {
+			parts[i] = `"` + a + `"`
+		} else {
+			parts[i] = a
+		}
+	}
+	return strings.Join(parts, " ")
 }
 
 func writeFile(dir, name, content string) error {
